@@ -2,6 +2,8 @@
    
 require APPPATH . 'libraries/REST_Controller.php';
 require APPPATH . 'libraries/JWT.php';
+require_once FCPATH . 'vendor/autoload.php';
+use Aws\S3\S3Client;
      
 class Admin extends REST_Controller 
 {
@@ -682,22 +684,35 @@ class Admin extends REST_Controller
                         // Rename Speed Governor Photo 
                         if (isset($params['veh_speed_governer_photo']) && strlen($params['veh_speed_governer_photo']) > 0) {
                             $sourcePath = 'public/temp_upload/' . basename($params['veh_speed_governer_photo']);
-                            $destinationPath = '/home/psdntech/public_html/public/upload/vehicle/' . basename($params['veh_speed_governer_photo']);
+							if (strpos($params['veh_speed_governer_photo'], 'temp_upload') !== false) {
+								$imagePath = $params['veh_speed_governer_photo'];
+								$imageData = explode('/', $imagePath);
+								$imageName = $imageData[2];
+								$path = "public/upload/vehicle";
+								$deviceImage = $this->awsImageUpload($imagePath, $imageName, $path);
+								// echo "<pre>";print_r($deviceImage);
+								$dats = explode('/', $deviceImage);
+								$params['veh_speed_governer_photo'] = $path.'/'.$dats[6];
+								if (isset($params['veh_speed_governer_photo']) && strlen($params['veh_speed_governer_photo']) > 0) {
+									unlink($imagePath);
+								}
+							}
+                            // $destinationPath = '/home/psdntech/public_html/public/upload/vehicle/' . basename($params['veh_speed_governer_photo']);
                             
-                            if (file_exists($sourcePath)) {
-                                if (rename($sourcePath, $destinationPath)) {
-                                    // Renaming successful
-                                    $params['veh_speed_governer_photo'] = $this->remove_parent_path($destinationPath);
-                                } else {
-                                    // Handle renaming failure
-                                    $this->returnResponse['status'] = false;
-						        	$this->returnResponse['msg'] = "Failed to rename the file.";
-                                }
-                            } else {
-                                // Handle the case where the source file does not exist
-                                    $this->returnResponse['status'] = false;
-						        	$this->returnResponse['msg'] = "veh_photo Source file does not exist.";
-                            }
+                            // if (file_exists($sourcePath)) {
+                            //     if (rename($sourcePath, $destinationPath)) {
+                            //         // Renaming successful
+                            //         $params['veh_speed_governer_photo'] = $this->remove_parent_path($destinationPath);
+                            //     } else {
+                            //         // Handle renaming failure
+                            //         $this->returnResponse['status'] = false;
+						    //     	$this->returnResponse['msg'] = "Failed to rename the file.";
+                            //     }
+                            // } else {
+                            //     // Handle the case where the source file does not exist
+                            //         $this->returnResponse['status'] = false;
+						    //     	$this->returnResponse['msg'] = "veh_photo Source file does not exist.";
+                            // }
                         }
                         
                         //stop
@@ -715,22 +730,34 @@ class Admin extends REST_Controller
                     
                     if (isset($params['veh_photo']) && strlen($params['veh_photo']) > 0) {
                         if (strpos($params['veh_photo'], 'temp_upload') !== false) {
-                            $source_file = $params['veh_photo'];
-                            $target_file = str_replace('public/temp_upload/', $this->veh_photo_folder, $params['veh_photo']);
+							$vehImagePath = $params['veh_photo'];
+							$vehImageData = explode('/', $vehImagePath);
+							$imageName1 = $vehImageData[2];
+							$path = "public/upload/vehicle";
+							$vehicleImage = $this->awsImageUpload($vehImagePath, $imageName1, $path);
+							// echo "<pre>";print_r($vehicleImage);
+							$dats = explode('/', $vehicleImage);
+							$params['veh_photo']  = $path.'/'.$dats[6];
+							// echo "<pre>";print_r($params['veh_photo']);exit;
+							if (isset($params['veh_photo']) && strlen($params['veh_photo']) > 0) {
+								unlink($vehImagePath);
+							}
+                            // $source_file = $params['veh_photo'];
+                            // $target_file = str_replace('public/temp_upload/', $this->veh_photo_folder, $params['veh_photo']);
                     
-                            if (file_exists($source_file)) {
-                                if (rename($source_file, $target_file)) {
-                                    $params['veh_photo'] = $this->remove_parent_path($target_file);
-                                } else {
-                                    // Handle renaming failure
-                                    $this->returnResponse['status'] = false;
-						        	$this->returnResponse['msg'] = "Failed to rename the file.";
-                                }
-                            } else {
-                                // Handle the case where the source file does not exist
-                                    $this->returnResponse['status'] = false;
-						        	$this->returnResponse['msg'] = "veh_photo Source file does not exist.";
-                            }
+                            // if (file_exists($source_file)) {
+                            //     if (rename($source_file, $target_file)) {
+                            //         $params['veh_photo'] = $this->remove_parent_path($target_file);
+                            //     } else {
+                            //         // Handle renaming failure
+                            //         $this->returnResponse['status'] = false;
+						    //     	$this->returnResponse['msg'] = "Failed to rename the file.";
+                            //     }
+                            // } else {
+                            //     // Handle the case where the source file does not exist
+                            //         $this->returnResponse['status'] = false;
+						    //     	$this->returnResponse['msg'] = "veh_photo Source file does not exist.";
+                            // }
                         }
                     }
                     
@@ -774,6 +801,90 @@ class Admin extends REST_Controller
 		}
 	}
 
+
+	public function awsImageUpload($imagePath, $imageName, $path){
+        try{
+            // echo "<pre>";print_r("imagePath =>".$imagePath." imageName =>".$imageName." path =>".$path);exit;
+            // "imagePath =>public/temp_upload/1697088606.png imageName =>1697088606.png path =>public/upload/vehicle"
+            // s3 Bucket connect
+            $credentials = [
+                'key'    => 'AKIASHD435HUONSXGNLH',
+                'secret' => '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',
+            ];
+            $s3Client = new S3Client([
+                'version'     => 'latest',
+                'region'      => 'ap-south-1',
+                'credentials' => $credentials
+            ]);
+
+            /* $bucket          = "psdn-v1"; */
+            $bucket          = "techpsdn";
+            $folderName      = $path;
+            $folderExists    = false;
+            list($txt, $ext) = explode(".", $imageName);
+            $contentType     = strtolower($ext);
+
+            //check folder
+            try {
+                $findFolder = $s3Client->listObjects([
+                    'Bucket' => $bucket,
+                    'Prefix' => $folderName . '/',
+                    'MaxKeys'=> 1,
+                ]);
+                if ($findFolder['Contents']) {
+                    $folderExists = true;
+                }
+                // echo "Folder exists!";
+            } catch (S3Exception $e) {
+                if ($e->getStatusCode() !== 404) {
+                    echo "An error occurred: " . $e->getMessage();
+                    exit;
+                }
+            }
+
+            // Create the folder if it doesn't exist
+            if (!$folderExists) {
+                $result = $s3Client->putObject([
+                    'Bucket'      => $bucket,
+                    'Key'         => $folderName."/".$imageName,
+                    'SourceFile'  => $imagePath,	               // public/temp_upload/1686202313.jpg
+                    'ContentType' => $contentType,		           // jpg or png (File Type)
+                    'StorageClass' => 'REDUCED_REDUNDANCY'       
+                ]);
+                    // echo "<pre>";print_r($result['ObjectURL']);exit;
+
+                $url = $result['ObjectURL'];
+                return $url;
+            }
+
+            // Upload the image to the folder  
+            try {
+                // echo "<pre>";print_r($folderName."/".$imageName);
+                // echo "<pre>";print_r("impa".$imagePath);
+                // echo "<pre>";print_r("ct".$contentType);exit;
+                $result1 = $s3Client->putObject([
+                    'Bucket'      => $bucket,
+                    'Key'         => $folderName."/".$imageName,   // sample/45614565.jpg
+                    'SourceFile'  => $imagePath,	               // public/temp_upload/1686202313.jpg
+                    'ContentType' => $contentType,		           // jpg or png (File Type)
+                    'StorageClass' => 'REDUCED_REDUNDANCY'
+                ]);
+
+                $urlOutput = $result1['ObjectURL'];
+                return $urlOutput;
+
+            }catch (S3Exception $e) {
+                die('Error:' . $e->getMessage());
+            } catch (Exception $e) {
+                die('Error:' . $e->getMessage());
+            } 
+        }catch (S3Exception $e) {
+            echo "An error occurred: " . $e->getMessage();
+            exit;
+        }
+    }
+
+	
 	public function view_cerficate_post()
 	{
 		$user = user_verification();
@@ -1158,8 +1269,8 @@ class Admin extends REST_Controller
 									{
 										$this->returnResponse['status']   = true;
 										$this->returnResponse['msg']      = 'Successsfully uplopaded image.';
-										// $this->returnResponse['base_url'] = base_url();
-										$this->returnResponse['base_url'] = AWS_S3_BUCKET_URL;
+										$this->returnResponse['base_url'] = base_url();
+										// $this->returnResponse['base_url'] = AWS_S3_BUCKET_URL;
 										$this->returnResponse['path']     = $path;
 										$this->returnResponse['img_name'] = $actual_image_name;
 										$config['image_library'] = 'gd2';
