@@ -92,3 +92,4 @@ defined('EXPIRE_DATE_VALUE')   OR define('EXPIRE_DATE_VALUE', 365);
 defined('APP_VERSION')         OR define('APP_VERSION', 2);
 defined('AWS_S3_BUCKET_URL_TECH') OR define('AWS_S3_BUCKET_URL_TECH', 'https://techpsdn.s3.ap-south-1.amazonaws.com/');
 defined('AWS_S3_BUCKET_URL_LIVE') OR define('AWS_S3_BUCKET_URL_LIVE', 'https://livepsdn.s3.ap-south-1.amazonaws.com/');
+defined('AWS_S3_BUCKET_URL') OR define('AWS_S3_BUCKET_URL', 'https://techpsdn.s3.ap-south-1.amazonaws.com/');

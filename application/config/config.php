@@ -24,7 +24,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 |
 */
 
-$config['base_url'] = 'http://india.psdn.in/psdnindia/';
+$config['base_url'] = 'http://india.psdn.tech/';
 define('NO_IMAGE', $config['base_url'].'public/images/no_image.png'); 
 
 /*
